@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Focus Gate - Study to Scroll",
+  "version": "1.0.0",
+  "description": "Blocks social media until you pass a quiz.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.twitter.com/*",
+    "*://*.facebook.com/*",
+    "*://*.instagram.com/*",
+    "*://*.reddit.com/*",
+    "*://*.youtube.com/*",
+    "*://*.tiktok.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/contentScript.js"],
+      "css": ["src/content/overlay.css"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html"
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/content/overlay.html",
+        "src/content/overlay.css",
+        "src/assets/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
