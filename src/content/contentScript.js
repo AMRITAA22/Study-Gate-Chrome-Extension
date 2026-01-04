@@ -166,29 +166,23 @@ function initializeOverlayLogic() {
     if (percentage >= 80) {
       // SUCCESS: > 80%
       questionText.innerHTML = `
-        <div style="color: #4ade80; font-size: 24px;">🎉 PASSED!</div>
+        <div style="color: #4ade80; font-size: 24px; font-weight: 800; margin-bottom: 10px;">🎉 ACCESS GRANTED</div>
         <p>Score: ${score}/${total} (${Math.round(percentage)}%)</p>
-        <p>Access granted for 30 minutes.</p>
+        <p style="font-size: 14px; opacity: 0.8;">The gate opens for 30 minutes.</p>
       `;
       setTimeout(() => grantAccess(), 2000);
     } else {
-      // FAIL
+      // 🔴 FAIL BLOCK - UPDATED
       questionText.innerHTML = `
-        <div style="color: #ef4444; font-size: 24px;">⛔ FAILED</div>
+        <div style="color: #f87171; font-size: 24px; font-weight: 800; margin-bottom: 10px;">⛔ ACCESS DENIED</div>
         <p>Score: ${score}/${total} (${Math.round(percentage)}%)</p>
-        <p>You need 80% to pass. Go study!</p>
+        <p style="font-size: 14px; opacity: 0.8;">Required: 80%. Review your notes!</p>
       `;
       
       // Add a "Retry" button
       const retryBtn = document.createElement('button');
-      retryBtn.textContent = "Try Again";
-      retryBtn.style.marginTop = "20px";
-      retryBtn.style.padding = "10px 20px";
-      retryBtn.style.background = "#ef4444";
-      retryBtn.style.color = "white";
-      retryBtn.style.border = "none";
-      retryBtn.style.borderRadius = "8px";
-      retryBtn.style.cursor = "pointer";
+      retryBtn.innerHTML = "<span>🔄 Retry Quiz</span>"; // Added icon
+      retryBtn.className = 'fg-btn-danger';
       
       retryBtn.onclick = () => location.reload(); // Reloads page to restart flow
       optionsDiv.appendChild(retryBtn);
