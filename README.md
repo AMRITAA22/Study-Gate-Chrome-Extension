@@ -4,8 +4,6 @@
 
 > **"Pay for your distraction with knowledge."**
 
-![Focus Gate Demo](https://via.placeholder.com/800x400?text=Focus+Gate+Extension+Demo)
-*(Replace this link with a screenshot of your actual extension later)*
 
 ---
 
