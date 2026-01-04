@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Gate - Study Material</title>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #000000;
+      color: #ffffff;
+      min-height: 100vh;
+      padding: 60px 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: 
+        radial-gradient(circle at 25% 25%, rgba(139, 92, 246, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(59, 130, 246, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.2) 0%, transparent 60%);
+      animation: mesh-rotate 25s linear infinite;
+      z-index: 0;
+      filter: blur(100px);
+    }
+
+    @keyframes mesh-rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Grain texture */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .container {
+      max-width: 950px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 60px;
+      animation: fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+        filter: blur(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+      }
+    }
+
+    .header-icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      display: inline-block;
+      animation: float 4s ease-in-out infinite;
+      filter: drop-shadow(0 0 40px rgba(139, 92, 246, 0.5));
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+
+    .header h1 {
+      font-size: 56px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ffffff 0%, #a78bfa 50%, #60a5fa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+      letter-spacing: -2px;
+      line-height: 1.1;
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    /* Cards */
+    .card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 40px;
+      border-radius: 28px;
+      margin-bottom: 32px;
+      backdrop-filter: blur(40px) saturate(180%);
+      box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+        0 20px 40px -15px rgba(0, 0, 0, 0.5);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        var(--accent-color) 50%, 
+        transparent 100%);
+      opacity: 0.5;
+    }
+
+    .card:nth-child(1) { animation-delay: 0.1s; --accent-color: #8b5cf6; }
+    .card:nth-child(2) { animation-delay: 0.2s; --accent-color: #6366f1; }
+    .card:nth-child(3) { animation-delay: 0.3s; --accent-color: #3b82f6; }
+    .card:nth-child(4) { animation-delay: 0.4s; --accent-color: #ec4899; }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(40px);
+        filter: blur(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+      }
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        0 30px 60px -20px rgba(0, 0, 0, 0.6);
+      transform: translateY(-4px);
+    }
+
+    .card h2 {
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    /* Form Elements */
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      font-size: 16px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: 'Outfit', sans-serif;
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+      font-weight: 500;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: rgba(139, 92, 246, 0.5);
+      box-shadow: 
+        0 0 0 3px rgba(139, 92, 246, 0.2),
+        0 8px 24px rgba(0, 0, 0, 0.3);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    input:hover, textarea:hover, select:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    input[type="password"] {
+      letter-spacing: 3px;
+    }
+
+    input[type="number"] {
+      max-width: 220px;
+    }
+
+    textarea {
+      height: 200px;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      resize: vertical;
+    }
+
+    /* Buttons */
+    button {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%);
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        0 12px 24px -8px rgba(139, 92, 246, 0.4);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.6s;
+    }
+
+    button::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 100%);
+      opacity: 0;
+      transition: opacity 0.4s;
+      border-radius: 14px;
+    }
+
+    button:hover::after {
+      opacity: 1;
+    }
+
+    button:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+        0 20px 40px -12px rgba(139, 92, 246, 0.6);
+    }
+
+    button:hover::before {
+      left: 100%;
+    }
+
+    button:active {
+      transform: translateY(-1px) scale(1);
+    }
+
+    button span,
+    button::first-letter {
+      position: relative;
+      z-index: 1;
+    }
+
+    .delete-btn {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      font-size: 13px;
+      padding: 10px 20px;
+      box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        0 8px 16px -6px rgba(239, 68, 68, 0.4);
+    }
+
+    .delete-btn:hover {
+      box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+        0 16px 32px -8px rgba(239, 68, 68, 0.6);
+    }
+
+    /* File Upload */
+    .file-upload-container {
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 24px;
+      border-radius: 20px;
+      background: rgba(139, 92, 246, 0.05);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-upload-container::before {
+      content: '📄';
+      position: absolute;
+      font-size: 120px;
+      opacity: 0.05;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-12deg);
+      pointer-events: none;
+    }
+
+    .file-upload-container:hover {
+      border-color: rgba(139, 92, 246, 0.5);
+      background: rgba(139, 92, 246, 0.1);
+      box-shadow: 
+        0 8px 24px rgba(139, 92, 246, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transform: translateY(-2px);
+    }
+
+    .file-upload-container p {
+      margin: 0 0 20px 0;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 600;
+      font-size: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    input[type="file"] {
+      margin-bottom: 0;
+      cursor: pointer;
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+
+    input[type="file"]::file-selector-button {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3));
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 12px 24px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    input[type="file"]::file-selector-button:hover {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(59, 130, 246, 0.5));
+      transform: translateY(-2px);
+    }
+
+    #pdf-loading-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      margin-top: 20px;
+      display: none;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #pdf-loading-progress {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #8b5cf6, #6366f1, #3b82f6);
+      transition: width 0.3s ease;
+      border-radius: 4px;
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+    }
+
+    #pdf-status {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 12px;
+      font-weight: 600;
+    }
+
+    /* Subject List */
+    .subject-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.3s ease;
+      border-radius: 16px;
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .subject-item:hover {
+      background: rgba(139, 92, 246, 0.1);
+      padding-left: 32px;
+      border-color: rgba(139, 92, 246, 0.3);
+      box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+    }
+
+    .subject-item:last-child {
+      border-bottom: none;
+    }
+
+    .subject-name {
+      font-weight: 700;
+      color: #ffffff;
+      font-size: 17px;
+      letter-spacing: 0.3px;
+    }
+
+    #status-msg {
+      margin-top: 20px;
+      padding: 16px 24px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 14px;
+      display: none;
+      animation: slideIn 0.4s ease-out;
+      border: 1px solid;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-15px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #status-msg.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    #status-msg.error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .info-box {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1));
+      padding: 20px 24px;
+      border-radius: 14px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 20px;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      font-weight: 500;
+      line-height: 1.6;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .empty-state::before {
+      content: '📚';
+      display: block;
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.3;
+      filter: grayscale(1);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 30px 15px;
+      }
+
+      .header-icon {
+        font-size: 56px;
+      }
+
+      .header h1 {
+        font-size: 40px;
+      }
+
+      .card {
+        padding: 28px;
+        border-radius: 24px;
+      }
+
+      .card h2 {
+        font-size: 24px;
+      }
+
+      .subject-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      .delete-btn {
+        align-self: flex-end;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <div class="header-icon">🔥</div>
+      <h1>Focus Gate</h1>
+      <p>Master your focus. Unlock your potential.</p>
+    </div>
+
+    <div class="card">
+      <h2>🔑 AI Configuration</h2>
+      <label for="api-key">Google Gemini API Key</label>
+      <input type="password" id="api-key" placeholder="Enter your API key...">
+      <button id="save-key-btn">Save Key</button>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Quiz Settings</h2>
+      
+      <label for="question-count">Questions Per Quiz</label>
+      <input type="number" id="question-count" min="1" max="10" value="3">
+      
+      <div class="info-box">
+        💡 More questions = stricter focus gate. Pass rate: 80%
+      </div>
+      
+      <button id="save-settings-btn" style="margin-top: 20px;">Save Settings</button>
+    </div>
+
+    <div class="card">
+      <h2>➕ Add New Subject</h2>
+      
+      <label for="subject-input">Subject Name</label>
+      <input type="text" id="subject-input" placeholder="e.g. Quantum Physics - Lecture 5">
+
+      <label>Study Notes Source</label>
+      
+      <div class="file-upload-container">
+        <p>📄 Drop your PDF here or click to browse</p>
+        <input type="file" id="file-upload" accept=".pdf">
+        <div id="pdf-loading-bar"><div id="pdf-loading-progress"></div></div>
+        <p id="pdf-status"></p>
+      </div>
+
+      <label for="notes-input">Notes Content</label>
+      <textarea id="notes-input" placeholder="Extracted text will appear here, or paste your own notes..."></textarea>
+
+      <button id="save-btn">Save Notes</button>
+      <p id="status-msg"></p>
+    </div>
+
+    <div class="card">
+      <h2>📖 Your Library</h2>
+      <div id="subjects-list">
+        <div class="empty-state">No subjects yet. Add your first one above!</div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="options.js" type="module"></script>
+</body>
+</html>

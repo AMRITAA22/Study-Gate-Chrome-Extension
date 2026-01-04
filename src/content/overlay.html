@@ -1,0 +1,33 @@
+<div id="focus-gate-overlay">
+  <div class="fg-glass-card">
+    <div class="fg-header">
+      <div class="fg-icon-pulse">🔒</div>
+      <h2>Focus Gate Active</h2>
+      <p class="fg-subtitle">Distraction Blocked. Knowledge Required.</p>
+    </div>
+
+    <div id="fg-subject-section" class="fg-section">
+      <label class="fg-label">Choose your weapon (Subject):</label>
+      <div class="fg-select-wrapper">
+        <select id="fg-subject-select">
+          <option value="" disabled selected>Select a Subject...</option>
+        </select>
+      </div>
+      <button id="fg-start-btn" class="fg-btn-primary">
+        <span>⚔️ Challenge Gate</span>
+      </button>
+    </div>
+
+    <div id="fg-quiz-section" class="fg-section" style="display: none;">
+      <div class="fg-question-box">
+        <span class="fg-tag">Question</span>
+        <p id="fg-question-text">Summoning the AI...</p>
+      </div>
+      <div id="fg-options" class="fg-options-grid"></div>
+    </div>
+
+    <div class="fg-footer">
+      <p>Powered by Gemini 2.5 • <span id="fg-streak">Streak: 0 🔥</span></p>
+    </div>
+  </div>
+</div>
