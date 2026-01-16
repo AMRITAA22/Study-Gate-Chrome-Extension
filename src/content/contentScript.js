@@ -4,24 +4,40 @@ const currentHostname = window.location.hostname;
 const isBlocked = BLOCKED_SITES.some(site => currentHostname.includes(site));
 
 if (isBlocked) {
+  // 1. Check immediately on load
   checkAccess();
+  
+  // 2. Start a "Heartbeat" to check every 5 seconds
+  // This catches you if the timer expires WHILE you are watching a video
+  setInterval(checkAccess, 5000);
 }
 
 function checkAccess() {
   chrome.storage.local.get(['accessExpiry'], (data) => {
     const now = Date.now();
+    
+    // If access is valid and not expired...
     if (data.accessExpiry && now < data.accessExpiry) {
-      return; // ALLOW ACCESS
-    } else {
+      // ...do nothing (User is allowed to watch)
+      return; 
+    } 
+    
+    // If time is up (or never existed), LOCK THE SCREEN.
+    // BUT first, check if it's ALREADY locked to prevent flickering.
+    if (!document.getElementById('focus-gate-overlay')) {
       activateLock();
     }
   });
 }
 
 function activateLock() {
+  // Stop any playing video/audio immediately
   window.stop();
+  
+  // Nuke the entire page content
   document.documentElement.innerHTML = '';
   
+  // Load the Gate
   fetch(chrome.runtime.getURL('src/content/overlay.html'))
     .then(r => r.text())
     .then(html => {
@@ -39,8 +55,18 @@ function injectCSS() {
   document.head.appendChild(link);
 }
 
-// --- QUIZ LOGIC UPGRADE ---
+// --- QUIZ LOGIC (Same as before) ---
 function initializeOverlayLogic() {
+  
+  // 👇 Load Streak Display
+  chrome.storage.local.get(['streak'], (result) => {
+    const streakCount = result.streak || 0;
+    const streakEl = document.getElementById('fg-streak');
+    if (streakEl) {
+      streakEl.textContent = `Streak: ${streakCount} 🔥`;
+    }
+  });
+
   const subjectSelect = document.getElementById('fg-subject-select');
   const startBtn = document.getElementById('fg-start-btn');
   const quizSection = document.getElementById('fg-quiz-section');
@@ -48,7 +74,7 @@ function initializeOverlayLogic() {
   const questionText = document.getElementById('fg-question-text');
   const optionsDiv = document.getElementById('fg-options');
 
-  // QUIZ STATE VARIABLES
+  // QUIZ STATE
   let quizQuestions = [];
   let currentQuestionIndex = 0;
   let score = 0;
@@ -84,7 +110,7 @@ function initializeOverlayLogic() {
     chrome.storage.local.get(['studyData', 'openaiKey', 'quizLength'], (data) => {
       const notes = data.studyData[subject];
       const apiKey = data.openaiKey;
-      const qCount = data.quizLength || 10;
+      const qCount = data.quizLength || 3;
 
       if (!apiKey) {
         alert("API Key missing! Check Extension Options.");
@@ -92,7 +118,6 @@ function initializeOverlayLogic() {
         return;
       }
 
-      // Send message to background to generate questions
       chrome.runtime.sendMessage(
         { action: "GENERATE_QUIZ", notes, apiKey, qCount },
         (response) => {
@@ -100,14 +125,11 @@ function initializeOverlayLogic() {
           startBtn.textContent = "⚔️ Challenge Gate";
 
           if (response && response.success) {
-            // INITIALIZE QUIZ
             quizQuestions = response.data;
             currentQuestionIndex = 0;
             score = 0;
-
             subjectSection.style.display = 'none';
             quizSection.style.display = 'block';
-            
             renderNextQuestion();
           } else {
             alert("Failed to generate quiz: " + (response ? response.error : "Unknown error"));
@@ -119,52 +141,39 @@ function initializeOverlayLogic() {
 
   // 3. Render Question Loop
   function renderNextQuestion() {
-    // Check if quiz is finished
     if (currentQuestionIndex >= quizQuestions.length) {
       finishQuiz();
       return;
     }
 
     const qData = quizQuestions[currentQuestionIndex];
-    
-    // Update UI
     questionText.textContent = `${currentQuestionIndex + 1}. ${qData.question}`;
     optionsDiv.innerHTML = '';
 
     qData.options.forEach(opt => {
       const btn = document.createElement('button');
       btn.textContent = opt;
-      
-      // Use existing CSS class for styling
-      // If you updated overlay.css for the "Cyberpunk" look, 
-      // these buttons will pick up those styles automatically.
-      
       btn.onclick = () => handleAnswer(opt, qData.answer);
       optionsDiv.appendChild(btn);
     });
   }
 
-  // 4. Handle Answer Click
   function handleAnswer(selectedOption, correctOption) {
     if (selectedOption === correctOption) {
       score++;
     }
-    
-    // Move to next question immediately (or you could add a delay/animation)
     currentQuestionIndex++;
     renderNextQuestion();
   }
 
-  // 5. Final Score Check
+  // 4. Final Score Check
   function finishQuiz() {
     const total = quizQuestions.length;
     const percentage = (score / total) * 100;
-
-    // Clear quiz UI
     optionsDiv.innerHTML = '';
     
     if (percentage >= 80) {
-      // SUCCESS: > 80%
+      // SUCCESS
       questionText.innerHTML = `
         <div style="color: #4ade80; font-size: 24px; font-weight: 800; margin-bottom: 10px;">🎉 ACCESS GRANTED</div>
         <p>Score: ${score}/${total} (${Math.round(percentage)}%)</p>
@@ -172,27 +181,25 @@ function initializeOverlayLogic() {
       `;
       setTimeout(() => grantAccess(), 2000);
     } else {
-      // 🔴 FAIL BLOCK - UPDATED
+      // FAIL
       questionText.innerHTML = `
         <div style="color: #f87171; font-size: 24px; font-weight: 800; margin-bottom: 10px;">⛔ ACCESS DENIED</div>
         <p>Score: ${score}/${total} (${Math.round(percentage)}%)</p>
         <p style="font-size: 14px; opacity: 0.8;">Required: 80%. Review your notes!</p>
       `;
       
-      // Add a "Retry" button
       const retryBtn = document.createElement('button');
-      retryBtn.innerHTML = "<span>🔄 Retry Quiz</span>"; // Added icon
+      retryBtn.innerHTML = "<span>🔄 Retry Quiz</span>";
       retryBtn.className = 'fg-btn-danger';
-      
-      retryBtn.onclick = () => location.reload(); // Reloads page to restart flow
+      retryBtn.onclick = () => location.reload(); 
       optionsDiv.appendChild(retryBtn);
     }
   }
 
   function grantAccess() {
+    // 30 Minutes Timer
     const expiry = Date.now() + (30 * 60 * 1000); 
     
-    // Update streak (Optional gamification)
     chrome.storage.local.get(['streak'], (res) => {
       const newStreak = (res.streak || 0) + 1;
       chrome.storage.local.set({ accessExpiry: expiry, streak: newStreak }, () => {
@@ -200,12 +207,4 @@ function initializeOverlayLogic() {
       });
     });
   }
-  // 👇 ADD THIS BLOCK: Load and display the streak
-  chrome.storage.local.get(['streak'], (result) => {
-    const streakCount = result.streak || 0;
-    const streakEl = document.getElementById('fg-streak');
-    if (streakEl) {
-      streakEl.textContent = `Streak: ${streakCount} 🔥`;
-    }
-  });
 }
