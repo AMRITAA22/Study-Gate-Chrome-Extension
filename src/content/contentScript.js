@@ -4,11 +4,8 @@ const currentHostname = window.location.hostname;
 const isBlocked = BLOCKED_SITES.some(site => currentHostname.includes(site));
 
 if (isBlocked) {
-  // 1. Check immediately on load
   checkAccess();
-  
-  // 2. Start a "Heartbeat" to check every 5 seconds
-  // This catches you if the timer expires WHILE you are watching a video
+  // Heartbeat: Check status every 5 seconds
   setInterval(checkAccess, 5000);
 }
 
@@ -16,14 +13,12 @@ function checkAccess() {
   chrome.storage.local.get(['accessExpiry'], (data) => {
     const now = Date.now();
     
-    // If access is valid and not expired...
+    // If access is active, do nothing
     if (data.accessExpiry && now < data.accessExpiry) {
-      // ...do nothing (User is allowed to watch)
       return; 
     } 
     
-    // If time is up (or never existed), LOCK THE SCREEN.
-    // BUT first, check if it's ALREADY locked to prevent flickering.
+    // If access expired, Lock the Screen (if not already locked)
     if (!document.getElementById('focus-gate-overlay')) {
       activateLock();
     }
@@ -31,13 +26,9 @@ function checkAccess() {
 }
 
 function activateLock() {
-  // Stop any playing video/audio immediately
   window.stop();
-  
-  // Nuke the entire page content
   document.documentElement.innerHTML = '';
   
-  // Load the Gate
   fetch(chrome.runtime.getURL('src/content/overlay.html'))
     .then(r => r.text())
     .then(html => {
@@ -55,38 +46,35 @@ function injectCSS() {
   document.head.appendChild(link);
 }
 
-// --- QUIZ LOGIC (Same as before) ---
 function initializeOverlayLogic() {
-  
-  // 👇 Load Streak Display
-  chrome.storage.local.get(['streak'], (result) => {
-    const streakCount = result.streak || 0;
-    const streakEl = document.getElementById('fg-streak');
-    if (streakEl) {
-      streakEl.textContent = `Streak: ${streakCount} 🔥`;
-    }
-  });
-
+  // Elements
   const subjectSelect = document.getElementById('fg-subject-select');
   const startBtn = document.getElementById('fg-start-btn');
   const quizSection = document.getElementById('fg-quiz-section');
   const subjectSection = document.getElementById('fg-subject-section');
   const questionText = document.getElementById('fg-question-text');
   const optionsDiv = document.getElementById('fg-options');
+  const streakEl = document.getElementById('fg-streak');
 
-  // QUIZ STATE
-  let quizQuestions = [];
-  let currentQuestionIndex = 0;
-  let score = 0;
+  // --- 1. CHECK COOLDOWN FIRST ---
+  chrome.storage.local.get(['nextQuizTime', 'studyData', 'streak', 'openaiKey', 'quizLength'], (data) => {
+    const now = Date.now();
+    const unlockTime = data.nextQuizTime || 0;
 
-  // 1. Populate Dropdown
-  chrome.storage.local.get(['studyData'], (result) => {
-    const subjects = Object.keys(result.studyData || {});
-    
+    // Show Streak
+    if (streakEl) streakEl.textContent = `Streak: ${data.streak || 0} 🔥`;
+
+    // CASE A: COOLDOWN ACTIVE (User must wait)
+    if (now < unlockTime) {
+      renderCooldownScreen(unlockTime);
+      return; // Stop here, don't show quiz options
+    }
+
+    // CASE B: QUIZ AVAILABLE (Populate Dropdown)
+    const subjects = Object.keys(data.studyData || {});
     if (subjects.length === 0) {
       subjectSelect.innerHTML = '<option disabled selected>No notes found. Go to Options!</option>';
       startBtn.disabled = true;
-      startBtn.textContent = "Add Notes First";
       return;
     }
 
@@ -97,33 +85,76 @@ function initializeOverlayLogic() {
       opt.text = subj;
       subjectSelect.add(opt);
     });
+
+    // Setup Quiz Logic
+    setupQuizListeners(data);
   });
 
-  // 2. Start Quiz
-  startBtn.addEventListener('click', () => {
-    const subject = subjectSelect.value;
-    if (!subject) return alert("Please select a subject!");
+  // --- HELPER: RENDER COOLDOWN SCREEN ---
+  function renderCooldownScreen(unlockTime) {
+    // Hide standard UI
+    subjectSection.style.display = 'none';
+    quizSection.style.display = 'none';
 
-    startBtn.textContent = "Summoning AI...";
-    startBtn.disabled = true;
+    // Update Header Text
+    document.querySelector('.fg-header h2').textContent = "⏳ Strict Mode Active";
+    document.querySelector('.fg-subtitle').textContent = "You have used your 30 minutes.";
 
-    chrome.storage.local.get(['studyData', 'openaiKey', 'quizLength'], (data) => {
-      const notes = data.studyData[subject];
-      const apiKey = data.openaiKey;
-      const qCount = data.quizLength || 3;
+    // Create Timer UI
+    const container = document.querySelector('.fg-glass-card');
+    const msgDiv = document.createElement('div');
+    msgDiv.style.marginTop = "30px";
+    msgDiv.innerHTML = `
+      <div style="font-size: 16px; color: #94a3b8; margin-bottom: 10px;">
+        Go study! The gate will re-open in:
+      </div>
+      <div id="fg-countdown" style="font-size: 48px; font-weight: 800; color: #facc15; font-family: monospace;">
+        --:--
+      </div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 20px;">
+        (Blocking is enforced for 1 hour)
+      </div>
+    `;
+    container.appendChild(msgDiv);
 
-      if (!apiKey) {
-        alert("API Key missing! Check Extension Options.");
-        startBtn.disabled = false;
-        return;
+    // Start Live Countdown
+    const timerInterval = setInterval(() => {
+      const remaining = unlockTime - Date.now();
+      if (remaining <= 0) {
+        clearInterval(timerInterval);
+        location.reload(); // Reload to show the quiz again!
+      } else {
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        document.getElementById('fg-countdown').textContent = 
+          `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
       }
+    }, 1000);
+  }
+
+  // --- HELPER: QUIZ LISTENERS ---
+  function setupQuizListeners(storedData) {
+    let quizQuestions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    startBtn.addEventListener('click', () => {
+      const subject = subjectSelect.value;
+      if (!subject) return alert("Please select a subject!");
+
+      startBtn.textContent = "Summoning AI...";
+      startBtn.disabled = true;
+      const notes = storedData.studyData[subject];
+      const apiKey = storedData.openaiKey;
+      const qCount = storedData.quizLength || 3;
+
+      if (!apiKey) return alert("API Key missing!");
 
       chrome.runtime.sendMessage(
         { action: "GENERATE_QUIZ", notes, apiKey, qCount },
         (response) => {
           startBtn.disabled = false;
           startBtn.textContent = "⚔️ Challenge Gate";
-
           if (response && response.success) {
             quizQuestions = response.data;
             currentQuestionIndex = 0;
@@ -132,77 +163,81 @@ function initializeOverlayLogic() {
             quizSection.style.display = 'block';
             renderNextQuestion();
           } else {
-            alert("Failed to generate quiz: " + (response ? response.error : "Unknown error"));
+            alert("Error: " + (response?.error || "Unknown"));
           }
         }
       );
     });
-  });
 
-  // 3. Render Question Loop
-  function renderNextQuestion() {
-    if (currentQuestionIndex >= quizQuestions.length) {
-      finishQuiz();
-      return;
+    function renderNextQuestion() {
+      if (currentQuestionIndex >= quizQuestions.length) {
+        finishQuiz();
+        return;
+      }
+      const qData = quizQuestions[currentQuestionIndex];
+      questionText.textContent = `${currentQuestionIndex + 1}. ${qData.question}`;
+      optionsDiv.innerHTML = '';
+      qData.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.textContent = opt;
+        btn.onclick = () => handleAnswer(opt, qData.answer);
+        optionsDiv.appendChild(btn);
+      });
     }
 
-    const qData = quizQuestions[currentQuestionIndex];
-    questionText.textContent = `${currentQuestionIndex + 1}. ${qData.question}`;
-    optionsDiv.innerHTML = '';
-
-    qData.options.forEach(opt => {
-      const btn = document.createElement('button');
-      btn.textContent = opt;
-      btn.onclick = () => handleAnswer(opt, qData.answer);
-      optionsDiv.appendChild(btn);
-    });
-  }
-
-  function handleAnswer(selectedOption, correctOption) {
-    if (selectedOption === correctOption) {
-      score++;
+    function handleAnswer(selected, correct) {
+      if (selected === correct) score++;
+      currentQuestionIndex++;
+      renderNextQuestion();
     }
-    currentQuestionIndex++;
-    renderNextQuestion();
-  }
 
-  // 4. Final Score Check
-  function finishQuiz() {
-    const total = quizQuestions.length;
-    const percentage = (score / total) * 100;
-    optionsDiv.innerHTML = '';
-    
-    if (percentage >= 80) {
-      // SUCCESS
-      questionText.innerHTML = `
-        <div style="color: #4ade80; font-size: 24px; font-weight: 800; margin-bottom: 10px;">🎉 ACCESS GRANTED</div>
-        <p>Score: ${score}/${total} (${Math.round(percentage)}%)</p>
-        <p style="font-size: 14px; opacity: 0.8;">The gate opens for 30 minutes.</p>
-      `;
-      setTimeout(() => grantAccess(), 2000);
-    } else {
-      // FAIL
-      questionText.innerHTML = `
-        <div style="color: #f87171; font-size: 24px; font-weight: 800; margin-bottom: 10px;">⛔ ACCESS DENIED</div>
-        <p>Score: ${score}/${total} (${Math.round(percentage)}%)</p>
-        <p style="font-size: 14px; opacity: 0.8;">Required: 80%. Review your notes!</p>
-      `;
+    function finishQuiz() {
+      const total = quizQuestions.length;
+      const percentage = (score / total) * 100;
+      optionsDiv.innerHTML = '';
       
-      const retryBtn = document.createElement('button');
-      retryBtn.innerHTML = "<span>🔄 Retry Quiz</span>";
-      retryBtn.className = 'fg-btn-danger';
-      retryBtn.onclick = () => location.reload(); 
-      optionsDiv.appendChild(retryBtn);
+      if (percentage >= 80) {
+        // SUCCESS
+        questionText.innerHTML = `
+          <div style="color: #4ade80; font-size: 24px; font-weight: 800;">🎉 ACCESS GRANTED</div>
+          <p>Score: ${score}/${total}</p>
+          <p>You have 30 minutes before the 1-hour lockout begins.</p>
+        `;
+        setTimeout(() => grantAccess(), 2500);
+      } else {
+        // FAIL
+        questionText.innerHTML = `
+          <div style="color: #f87171; font-size: 24px; font-weight: 800;">⛔ FAILED</div>
+          <p>Score: ${score}/${total}</p>
+        `;
+        const retryBtn = document.createElement('button');
+        retryBtn.textContent = "🔄 Retry Quiz";
+        retryBtn.className = 'fg-btn-danger';
+        retryBtn.onclick = () => location.reload(); 
+        optionsDiv.appendChild(retryBtn);
+      }
     }
   }
 
+  // --- UPDATED GRANT ACCESS LOGIC ---
   function grantAccess() {
-    // 30 Minutes Timer
-    const expiry = Date.now() + (30 * 60 * 1000); 
+    const now = Date.now();
+    const accessDuration = 30 * 60 * 1000; // 30 Minutes Access
+    const cooldownDuration = 60 * 60 * 1000; // 1 Hour Block
     
+    // accessExpiry = When site CLOSES
+    const accessExpiry = now + accessDuration; 
+    
+    // nextQuizTime = When quiz RE-OPENS (Access time + 1 hour lockout)
+    const nextQuizTime = accessExpiry + cooldownDuration;
+
     chrome.storage.local.get(['streak'], (res) => {
       const newStreak = (res.streak || 0) + 1;
-      chrome.storage.local.set({ accessExpiry: expiry, streak: newStreak }, () => {
+      chrome.storage.local.set({ 
+        accessExpiry: accessExpiry, 
+        nextQuizTime: nextQuizTime, // <--- SAVING THE COOLDOWN
+        streak: newStreak 
+      }, () => {
         location.reload();
       });
     });
